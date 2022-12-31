@@ -60,6 +60,10 @@
         });
 
         var session_select_buttons = document.querySelectorAll("#session-select");
+        // new-session button redirects to /add_session
+        document.querySelector("#new-session").addEventListener("click", function () {
+            window.location.href = "/add_session";
+        })
 
         session_select_buttons.forEach(function (button) {
             button.addEventListener("click", function () {
