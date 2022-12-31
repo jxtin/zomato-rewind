@@ -1,0 +1,113 @@
+body {
+    background-color: #f5f5f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-image: url("/static/images/background.jpeg");
+}
+
+h2 {
+    color: #f5f5f5;
+}
+
+/* center align container */
+#text-heading {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    height: 90vh;
+    max-height: 30%;
+}
+
+#my-form {
+    /* it should be right below #text-heading */
+    margin-top: 30px;
+    display: flex;
+    justify-content: left center;
+    align-items: center;
+}
+
+
+
+/* size and width of form to 20% by 20% */
+.form-horizontal {
+    width: 150%;
+    height: 100%;
+    border: 1px solid rgb(233, 152, 152);
+    background-color: #ffffff;
+    color: #df6464;
+    /* bold font  */
+    margin-top: 30px;
+    padding-top: 20px;
+    border-radius: 10px;
+}
+
+.form-control {
+    margin-top: 20px;
+}
+
+#desc {
+    color: #f5f5f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+
+
+/* move btn-group to top right */
+.btn-group {
+    position: absolute;
+    right: 10%;
+    top: 20%;
+    position: fixed;
+}
+
+#download-button {
+    position: absolute;
+    right: 10%;
+    top: 10%;
+    position: fixed;
+}
+
+#les-go {
+    position: absolute;
+    right: 10%;
+    top: 15%;
+    position: fixed;
+}
+
+
+
+
+
+.dropdown-menu {
+    padding: 0;
+}
+
+.stats {
+    display: inline-block;
+    /* max width should be 40% of the window */
+    max-width: 40%;
+    margin: 10%;
+    list-style-type: none;
+}
+
+.stat {
+    text-align: center-left;
+    margin-bottom: 5%;
+    padding: 3%;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 7px;
+    font-size: 23px;
+    /* some mordern looking font*/
+    font-family: 'Roboto', sans-serif;
+    /* make it bold */
+    font-weight: 400;
+}
+
+/* make stat shine and enlarge on hover */
+/* there should be a strip of light that moves across the stat */
+/* increase the size of adjacent stats too */
+.stat:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+    transform: scale(1.1);
+    transition: 0.5s;
+}

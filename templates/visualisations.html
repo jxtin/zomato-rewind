@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Visualisations</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body>
+
+
+    <div class="btn-group">
+
+        <button type="button" class="dropdown-toggle btn btn-primary" data-bs-toggle="dropdown" aria-expanded="false">
+            Select session
+        </button>
+        <ul class="dropdown-menu">
+            {% for dict_item in session_list %}
+
+            <li class="dropdown-item">
+                {% if dict_item["has_data"] == True %}
+                <button class="btn btn-success" id="session-select" type="button">{{dict_item["phone_number"]}}</button>
+                {% else %}
+                <button class="btn btn-info" type="button" id="session-select">{{dict_item["phone_number"]}}</button>
+                {% endif %}
+            </li>
+            {% endfor %}
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li>
+                <!-- add new session redirects to /add_session -->
+                <button class="btn btn-info" type="button" id="new-session">+ Add new session</button>
+            </li>
+
+        </ul>
+
+    </div>
+    <button type="button" class="btn btn-primary" id="download-button">Fetch data</button>
+    <button type="button" class="btn btn-primary" id="les-go">Go</button>
+
+    <ul class="stats">
+    </ul>
+</body>
+
+
+<script>
+
+
+    var session_select_buttons = document.querySelectorAll("#session-select");
+
+    session_select_buttons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var phone_number = button.innerHTML;
+            document.querySelector(".dropdown-toggle").innerHTML = phone_number;
+            // if class of button is not btn btn-success then add text saying fetch data first
+            if (button.classList.contains("btn-success") == false) {
+                document.querySelector(".dropdown-toggle").innerHTML += " (fetch data first)";
+                document.querySelector("#les-go").disabled = true;
+            }
+        })
+    });
+
+    document.querySelector("#les-go").addEventListener("click", getStats)
+
+    document.querySelector("#download-button").addEventListener("click", fetchData);
+    function fetchData() {
+        document.querySelector("#download-button").disabled = true;
+        phone_number = document.querySelector(".dropdown-toggle").innerHTML.slice(0, 10);
+        fetch('/fetch_data', {
+            method: 'POST',
+            body: JSON.stringify({
+                phone_number: phone_number
+            })
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                if (data["status"] == 200) {
+                    session_select_buttons.forEach(function (button) {
+                        if (button.innerHTML == phone_number) {
+                            // change the class of the button to btn btn-success
+                            button.classList.remove("btn-info");
+                            button.classList.add("btn-success");
+                        }
+                    })
+                    alert("Data fetched successfully");
+                    // set the class="dropdown-toggle btn btn-primary" button innerHTML to phone_number
+                    document.querySelector(".dropdown-toggle").innerHTML = phone_number;
+
+                    document.querySelector("#download-button").disabled = false;
+                    // enable the button with id les-go
+                    document.querySelector("#les-go").disabled = false;
+
+
+                }
+            })
+
+
+    }
+
+
+
+    function getStats() {
+        // get the phone number of the session
+        var phone_number = document.querySelector(".dropdown-toggle").innerHTML;
+        // disable the button with id les-go
+        document.querySelector("#les-go").disabled = true;
+        // make a post request to /get_stats with phone_number as the data
+        fetch('/get_stats', {
+            method: 'POST',
+            body: JSON.stringify({
+                phone_number: phone_number
+            })
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                // set the innerHTML of the stats to the data
+                stats = data["stats"];
+                // <ul class="stats">
+                //     <li class="stat"></li>
+                // </ul>
+
+                // get the ul element with class stats
+                var ul = document.querySelector(".stats");
+                // remove all children of the ul element
+                ul.innerHTML = "";
+                // for each stat in stats
+                stats.forEach(function (stat) {
+                    // create a li element
+                    var li = document.createElement("li");
+                    // set the class of the li element to stat
+                    li.classList.add("stat");
+                    // set the innerHTML of the li element to stat
+                    li.innerHTML = stat;
+                    // append the li element to the ul element
+                    ul.appendChild(li);
+                });
+                // enable the button with id les-go
+                document.querySelector("#les-go").disabled = false;
+
+            })
+    }
+
+</script>
+
+
+
+
+</html>
