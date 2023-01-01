@@ -79,3 +79,30 @@ function getStats() {
 
         })
 }
+
+
+function displayGraphs() {
+    phone_number = document.querySelector(".dropdown-toggle").innerHTML;
+    var modal = document.getElementById("visualisationModal");
+    var span = document.getElementsByClassName("close")[0];
+
+    modal.style.display = "block";
+    // get image from server
+    // /visualisations/<phone_num>
+    fetch('/visualisations/' + phone_number)
+        .then(function (response) {
+            // convert blob to base64
+            return response.blob();
+        }
+        )
+        .then(function (data) {
+            // convert blob to base64
+            var reader = new FileReader();
+            reader.readAsDataURL(data);
+            reader.onloadend = function () {
+                base64data = reader.result;
+                // set the src of the image to the base64 data
+                document.getElementsByClassName("visualisation_img")[0].src = base64data;
+            }
+        });
+}

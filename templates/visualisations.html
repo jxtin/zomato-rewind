@@ -41,9 +41,27 @@
     </div>
     <button type="button" class="btn btn-primary" id="download-button">Fetch data</button>
     <button type="button" class="btn btn-primary" id="les-go">Go</button>
+    <button type="button" class="btn btn-primary" id="show-graphs">Display Graphs</button>
 
     <ul class="stats">
     </ul>
+
+    <!-- The Modal -->
+    <div id="visualisationModal" class="modal">
+
+        <!-- The Close Button -->
+        <span class="close">&times;</span>
+
+        <!-- Modal Content (The Image) -->
+        <img class="visualisation_img">
+
+        <!-- Modal Caption (Image Text) -->
+        <div id="caption">Calendar heatmap of ordercount, wordcloud of orders, piechart of money spent per city, and a
+            graph showing money spent on zomato each month</div>
+    </div>
+
+
+
     <script>
         var session_select_buttons = document.querySelectorAll("#session-select");
 
@@ -55,6 +73,7 @@
                 if (button.classList.contains("btn-success") == false) {
                     document.querySelector(".dropdown-toggle").innerHTML += " (fetch data first)";
                     document.querySelector("#les-go").disabled = true;
+                    document.querySelector("#show-graphs").disabled = true;
                 }
             })
         });
@@ -73,6 +92,7 @@
                 if (button.classList.contains("btn-success") == false) {
                     document.querySelector(".dropdown-toggle").innerHTML += " (fetch data first)";
                     document.querySelector("#les-go").disabled = true;
+                    document.querySelector("#show-graphs").disabled = true;
                 }
             })
         });
@@ -80,8 +100,21 @@
         document.querySelector("#les-go").addEventListener("click", getStats)
 
         document.querySelector("#download-button").addEventListener("click", fetchData);
-    </script>
-</body>
 
+        document.querySelector("#show-graphs").addEventListener("click", displayGraphs);
+        var showVis = document.getElementById("show-graphs");
+
+
+        showVis.onclick = displayGraphs;
+
+        var span = document.getElementsByClassName("close")[0];
+
+        span.onclick = function () {
+            document.getElementById("visualisationModal").style.display = "none";
+        }
+
+    </script>
+
+</body>
 
 </html>

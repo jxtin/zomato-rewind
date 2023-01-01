@@ -3,10 +3,11 @@ import os
 import glob
 import pickle
 import json
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 from create_session import *
 from create_session import get_order_json
 from stat_handler import *
+
 
 app = Flask(__name__)
 
@@ -109,9 +110,17 @@ def get_stats():
     return jsonify(response)
 
 
+@app.route("/visualisations/<phone_num>")
+def serve_image(phone_num):
+    # return image stored at visualisations/<phone_num>.png
+    return send_file(f"visualisations/{phone_num}.png")
+
+
 def get_stats(phone_num):
     user = User_data(phone_num)
     stats = user.generate_stat_str()
+    # generate visualisations
+    user.generate_visualisations()
     return stats
 
 

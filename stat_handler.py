@@ -1,6 +1,11 @@
 import json
 import pandas
+import os
 import datetime
+import july
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from PIL import Image
 
 
 def clean_order_amt(order_amt):
@@ -8,8 +13,22 @@ def clean_order_amt(order_amt):
     return round(order_amt, 2)
 
 
+def get_dishlist(dish_string_string):
+    dish_list = dish_string_string.split(", ")
+    dish_with_count = {}
+    for dish in dish_list:
+        dish = dish.strip()
+        if " x " in dish:
+            dish_count, dish_name = dish.split(" x ")
+            dish_with_count[dish_name] = int(dish_count)
+        else:
+            dish_with_count[dish] = 1
+    return dish_with_count
+
+
 class User_data:
     def __init__(self, phone_number):
+        self.phone_number = phone_number
         with open(f"order_data/{phone_number}_orders.json", "r") as f:
             all_orders = json.load(f)
 
@@ -29,31 +48,39 @@ class User_data:
             self.most_common["address"] = self.get_most_common("address")
             self.most_common["restaurant"] = self.get_most_common("restaurant")
 
+        self.date2ordercount = self.get_date2ordercount()
+
+    def get_date2ordercount(self):
+        date2ordercount = {}
+        for order in self.minimal_orders:
+            date = order["datetime"].date()
+            if date in date2ordercount:
+                date2ordercount[date] += 1
+            else:
+                date2ordercount[date] = 1
+        # make it a dataframe
+        date2ordercount = pandas.DataFrame(
+            list(date2ordercount.items()), columns=["date", "order_count"]
+        )
+        date2ordercount["date"] = pandas.to_datetime(date2ordercount["date"])
+        date2ordercount = date2ordercount.sort_values(by="date")
+        return date2ordercount
+
     def get_city_stats(self):
         city_total = {}
 
-        for order in self.orders:
-            # '/city/resname'
-            city = order["resInfo"]["resPath"].split("/")[1]
-            cost = clean_order_amt(order["totalCost"])
-            if city in city_total:
-                city_total[city] += cost
+        for order in self.minimal_orders:
+            if order["city"] in city_total:
+                city_total[order["city"]] += order["amount"]
             else:
-                city_total[city] = cost
+                city_total[order["city"]] = order["amount"]
+
         # sort by value
         city_total = dict(
             sorted(city_total.items(), key=lambda item: item[1], reverse=True)
         )
 
-        # generate a string for each city
-        city_stats = []
-        # if there are more than 5 cities, only show the top 5
-        for city, total in city_total.items():
-            city_stats.append((city, int(total)))
-            if len(city_stats) == 5:
-                break
-
-        return city_stats
+        return city_total
 
     def minimise_orders(self):
         minimal_orders = []
@@ -61,13 +88,16 @@ class User_data:
             minimal_orders.append(
                 {
                     "restaurant": order["resInfo"]["name"],
+                    "city": order["resInfo"]["resPath"].split("/")[1],
                     "amount": clean_order_amt(order["totalCost"]),
                     "address": order["deliveryDetails"]["deliveryAddress"],
                     "datetime": datetime.datetime.strptime(
                         order["orderDate"], "%B %d, %Y at %I:%M %p"
                     ),
+                    "dishes": get_dishlist(order["dishString"]),
                 }
             )
+        # print(minimal_orders[:10])
         return minimal_orders
 
     def get_most_common(self, column):
@@ -196,32 +226,233 @@ class User_data:
             stats.append(
                 f"Total restaurants explored <b>{self.get_total_restaurants()}</b>."
             )
-            stats.append(f"And spent inr. <b>{self.get_total_spent()}</b>.")
+            stats.append(f"And spent ₹<b>{self.get_total_spent()}</b>.")
             stats.append(
-                f"Most common restaurant: <b>{self.most_common['restaurant']['restaurant']}</b> with <b>{self.most_common['restaurant']['count']}</b> orders and inr. <b>{self.most_common['restaurant']['money_spent']}</b> spent."
+                f"Most common restaurant: <b>{self.most_common['restaurant']['restaurant']}</b> with <b>{self.most_common['restaurant']['count']}</b> orders and ₹<b>{self.most_common['restaurant']['money_spent']}</b> spent."
             )
+            # most common dish
+            most_common_dish = "Most common dishes: <br>"
+            # only top 7
+            if len(self.get_common_dishes()) > 7:
+                for dish in list(self.get_common_dishes().items())[:7]:
+                    most_common_dish += (
+                        f"{dish[0].capitalize()}: <b>{dish[1]}</b> times<br>"
+                    )
+                else:
+                    most_common_dish += (
+                        f"{dish[0].capitalize()}: <b>{dish[1]}</b> times<br>"
+                    )
+                stats.append(most_common_dish)
+
+            # city_stats
+            city_stats = "City stats: <br>"
+            for city in self.city_stats:
+                city_stats += f"{city.capitalize()}: <b>₹{int(self.city_stats[city])}</b> spent<br>"
+            stats.append(city_stats)
+
             stats.append(
-                f"Most common address: {self.most_common['address']['address']} with <b>{self.most_common['address']['count']}</b> orders and inr. <b>{self.most_common['address']['money_spent']}</b> spent."
+                f"Most common address: {self.most_common['address']['address']} with <b>{self.most_common['address']['count']}</b> orders and ₹<b>{self.most_common['address']['money_spent']}</b> spent."
             )
             money_spent_per_restaurant = "Money spent per restaurant: <br>"
             for restaurant in self.money_spent_per_restaurant():
-                money_spent_per_restaurant += f"{restaurant[0].capitalize()}: inr. <b>{int(restaurant[1])}</b><br>"
+                money_spent_per_restaurant += (
+                    f"{restaurant[0].capitalize()}: ₹<b>{int(restaurant[1])}</b><br>"
+                )
             stats.append(money_spent_per_restaurant)
             money_spent_per_address = "Money spent per address: <br>"
             for address in self.money_spent_per_address():
                 money_spent_per_address += (
-                    f"{address[0].capitalize()}: inr. <b>{int(address[1])}</b><br>"
+                    f"{address[0].capitalize()}: ₹<b>{int(address[1])}</b><br>"
                 )
             stats.append(money_spent_per_address)
 
-            city_stats = "Money spent per city: \n<br>"
-            for city in self.city_stats:
-                city_stats += f"{city[0]}: inr. <b>{city[1]}</b>\n<br>"
-            stats.append(city_stats)
             return stats
+
+    def get_common_dishes(self):
+        # return a dict of the most common dishes
+        most_common_dishes = {}
+        for order in self.minimal_orders:
+            for dish in order["dishes"]:
+                if dish in most_common_dishes:
+                    most_common_dishes[dish] += 1
+                else:
+                    most_common_dishes[dish] = 1
+
+        # sort by value
+        most_common_dishes = dict(
+            sorted(
+                most_common_dishes.items(),
+                key=lambda item: item[1],
+                reverse=True,
+            )
+        )
+
+        return most_common_dishes
+
+    def money_spent_per_month(self):
+        money_spent_per_month = {}
+        # consider only orders post 2021
+        for order in self.minimal_orders:
+            if order["datetime"].year > 2021:
+                if order["datetime"].month in money_spent_per_month:
+                    money_spent_per_month[order["datetime"].month] += order["amount"]
+                else:
+                    money_spent_per_month[order["datetime"].month] = order["amount"]
+
+        # sort by date
+
+        return money_spent_per_month
+
+    def generate_line_chart(self):
+        # generate a line chart of the money spent per month
+        # line and text should be white
+        # background should be transparent
+        money_spent_per_month = self.money_spent_per_month()
+        # print(money_spent_per_month)
+
+        plt.clf()
+        plt.figure(figsize=(10, 10), facecolor="#cb202d")
+        plt.plot(
+            list(money_spent_per_month.keys()),
+            list(money_spent_per_month.values()),
+            color="white",
+        )
+        # axes facecolor = #cb202d
+        plt.gca().set_facecolor("#cb202d")
+        # no border
+        plt.gca().spines["top"].set_visible(False)
+        plt.gca().spines["right"].set_visible(False)
+        # for bottom and left set color to white
+        plt.gca().spines["bottom"].set_color("white")
+        plt.gca().spines["left"].set_color("white")
+
+        # the values on the axes should be white
+        plt.gca().tick_params(axis="x", colors="white")
+        plt.gca().tick_params(axis="y", colors="white")
+
+        plt.xlabel("Date", color="white")
+        plt.ylabel("Money spent", color="white")
+        plt.title("Money spent per month", color="white", fontsize=30)
+        plt.savefig(
+            f"visualisations/line_chart_{self.phone_number}.png", transparent=False
+        )
+
+    def generate_heatmap(self):
+        # keep dates post 2020
+        self.date2ordercount = self.date2ordercount[
+            self.date2ordercount.date.dt.year > 2021
+        ]
+        # can the background be transparent?
+        july.heatmap(
+            self.date2ordercount.date,
+            self.date2ordercount.order_count,
+            cmap="Reds",
+            colorbar=True,
+            rc_params_dict={
+                "figure.figsize": (5, 5),
+            },
+        ).figure.savefig(
+            f"visualisations/heatmap_{self.phone_number}.png",
+        )
+
+    def generate_wordcloud(self):
+        # generate a wordcloud of the most common words in the restaurant names
+        # generate a string of all the food items ordered
+        dishes_text_string = ""
+        for order in self.minimal_orders:
+            for item in order["dishes"].keys():
+                dishes_text_string += (f"{item} ") * order["dishes"][item]
+        # generate the wordcloud
+        wordcloud = WordCloud(
+            background_color="white",
+            width=1000,
+            height=500,
+            max_words=200,
+            max_font_size=300,
+        ).generate(dishes_text_string)
+        # save the wordcloud
+        wordcloud.to_file(f"visualisations/wordcloud_{self.phone_number}.png")
+
+    def generate_pie_chart(self):
+        # reset plt
+        plt.clf()
+        # cities less than 1% of the total money spent will be grouped into "other"
+        pie_chart_cities = self.city_stats.copy()
+        pie_chart_cities["other"] = 0
+        for city in self.city_stats:
+            if self.city_stats[city] / self.get_total_spent() < 0.01:
+                pie_chart_cities["other"] += self.city_stats[city]
+                del pie_chart_cities[city]
+        # generate the pie chart
+        plt.pie(
+            pie_chart_cities.values(),
+            labels=pie_chart_cities.keys(),
+            autopct="%1.1f%%",
+            pctdistance=0.9,
+            startangle=90,
+        )
+        # save the pie chart
+        plt.savefig(f"visualisations/pie_chart_{self.phone_number}.png")
+
+    def generate_visualisations(self):
+        self.generate_heatmap()
+        self.generate_wordcloud()
+        self.generate_pie_chart()
+        self.generate_line_chart()
+        # stitch the images together into a single image
+        # get the images
+        heatmap = Image.open(f"visualisations/heatmap_{self.phone_number}.png")
+        wordcloud = Image.open(f"visualisations/wordcloud_{self.phone_number}.png")
+        pie_chart = Image.open(f"visualisations/pie_chart_{self.phone_number}.png")
+        line_chart = Image.open(f"visualisations/line_chart_{self.phone_number}.png")
+        heatmap = heatmap.crop((0, 0, heatmap.size[0], int(heatmap.size[1] * 0.7)))
+        heatmap = heatmap.crop(
+            (0, int(heatmap.size[1] * 0.45), heatmap.size[0], heatmap.size[1])
+        )
+        heatmap = heatmap.crop(
+            (int(heatmap.size[0] * 0.1), 0, heatmap.size[0], heatmap.size[1])
+        )
+        heatmap = heatmap.crop((0, 0, int(heatmap.size[0] * 0.95), heatmap.size[1]))
+
+        # heatmap should be on the top with its width being 1000 and height value to preserve aspect ratio
+        heatmap = heatmap.resize((1000, int(heatmap.size[1] * 1000 / heatmap.size[0])))
+        # below the heatmap should be the wordcloud
+        wordcloud = wordcloud.resize(
+            (1000, int(1000 * wordcloud.size[1] / wordcloud.size[0]))
+        )
+        pie_chart = pie_chart.crop(
+            (int(pie_chart.size[0] * 0.33), 0, pie_chart.size[0], pie_chart.size[1])
+        )
+        pie_chart = pie_chart.crop(
+            (0, 0, int(pie_chart.size[0] * 0.6), pie_chart.size[1])
+        )
+        pie_chart = pie_chart.crop(
+            (0, int(pie_chart.size[1] * 0.1), pie_chart.size[0], pie_chart.size[1])
+        )
+        pie_chart = pie_chart.crop(
+            (0, 0, pie_chart.size[0], int(pie_chart.size[1] * 0.85))
+        )
+
+        pie_chart = pie_chart.resize((500, 500))
+        line_chart = line_chart.resize((500, 500))
+        height = heatmap.size[1] + wordcloud.size[1] + pie_chart.size[1] + 10 * 2
+        width = 1000
+        new_image = Image.new("RGB", (width, height), (255, 255, 255))
+        new_image.paste(heatmap, (0, 0))
+        new_image.paste(wordcloud, (0, heatmap.size[1] + 10))
+        new_image.paste(pie_chart, (0, heatmap.size[1] + wordcloud.size[1] + 20))
+        new_image.paste(line_chart, (500, heatmap.size[1] + wordcloud.size[1] + 20))
+        # save the image
+        new_image.save(f"visualisations/{self.phone_number}.png")
+        # delete the individual images
+        os.remove(f"visualisations/heatmap_{self.phone_number}.png")
+        os.remove(f"visualisations/wordcloud_{self.phone_number}.png")
+        os.remove(f"visualisations/pie_chart_{self.phone_number}.png")
+        os.remove(f"visualisations/line_chart_{self.phone_number}.png")
 
 
 if __name__ == "__main__":
     user = User_data("7999580495")
     # user.display_stats()
-    print(user.generate_stat_str())
+    # print(user.generate_stat_str())
+    user.generate_visualisation()
