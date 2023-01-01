@@ -3,6 +3,7 @@ import time
 import json
 from selenium import webdriver
 import requests
+import concurrent.futures
 
 
 def create_driver():
@@ -56,20 +57,35 @@ def get_otp():
     return input("Enter OTP: ")
 
 
+def get_page_json(page, req_session):
+    time.sleep(0.5)
+    print(f"Page {page} started")
+    r = req_session.get(
+        "https://www.zomato.com/webroutes/user/orders?page={}".format(page)
+    )
+    print(f"Page {page} done")
+    return r.json()
+
+
 def get_order_json(phone_number):
     with open(f"sessions/{phone_number}_session.pkl", "rb") as f:
         req_session = pickle.load(f)
     orders = req_session.get("https://www.zomato.com/webroutes/user/orders")
     page_count = orders.json()["sections"]["SECTION_USER_ORDER_HISTORY"]["totalPages"]
     all_pages = []
-    for page in range(1, page_count + 1):
-        r = req_session.get(
-            "https://www.zomato.com/webroutes/user/orders?page={}".format(page)
-        )
-        all_pages.append(r.json())
-        print(f"Page {page} done")
-        print(f"Length of curr_page: {len(r.json())}")
-        time.sleep(0.3)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for page in range(1, page_count + 1):
+            all_pages.append(executor.submit(get_page_json, page, req_session))
+    all_pages = [page.result() for page in all_pages]
+
+    # for page in range(1, page_count + 1):
+    #     r = req_session.get(
+    #         "https://www.zomato.com/webroutes/user/orders?page={}".format(page)
+    #     )
+    #     all_pages.append(r.json())
+    #     print(f"Page {page} done")
+    #     print(f"Length of curr_page: {len(r.json())}")
+    #     time.sleep(0.3)
 
     with open(f"order_data/{phone_number}_orders.json", "w") as f:
         json.dump(all_pages, f)
