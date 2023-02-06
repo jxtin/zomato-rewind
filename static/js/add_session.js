@@ -115,7 +115,7 @@ function verifyOtp() {
             if (data.status == 200) {
                 alert('Login successful');
                 // redirect to visualisation page
-                window.location.href = '/visualisation';
+                window.location.href = '/visualisations';
             }
             else {
                 alert(data.message);

@@ -3,6 +3,8 @@ import time
 import json
 from selenium import webdriver
 import requests
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 import concurrent.futures
 
 
@@ -14,12 +16,16 @@ def create_driver():
     )
     driver = webdriver.Chrome(options=options)
     driver.get("https://www.zomato.com/")
-    time.sleep(1)
+    time.sleep(2)
     return driver
 
 
 def login(driver, phone_num):
-    driver.find_element_by_css_selector("ul[role='menu'] li:nth-last-child(2)").click()
+    actions = ActionChains(driver) 
+    actions.send_keys(Keys.TAB * 6)
+    actions.perform()
+    element = driver.switch_to.active_element
+    element.click()
     time.sleep(5)
     driver.switch_to.frame("auth-login-ui")
     driver.find_element_by_css_selector("input[type='number']").send_keys(
@@ -36,7 +42,6 @@ def login(driver, phone_num):
         print("OTP not sent.")
         driver.quit()
         return None
-
 
 def fill_otp_submit(driver, otp):
     driver.find_element_by_css_selector("input[type='text']").send_keys(f"{otp}")
@@ -77,15 +82,6 @@ def get_order_json(phone_number):
         for page in range(1, page_count + 1):
             all_pages.append(executor.submit(get_page_json, page, req_session))
     all_pages = [page.result() for page in all_pages]
-
-    # for page in range(1, page_count + 1):
-    #     r = req_session.get(
-    #         "https://www.zomato.com/webroutes/user/orders?page={}".format(page)
-    #     )
-    #     all_pages.append(r.json())
-    #     print(f"Page {page} done")
-    #     print(f"Length of curr_page: {len(r.json())}")
-    #     time.sleep(0.3)
 
     with open(f"order_data/{phone_number}_orders.json", "w") as f:
         json.dump(all_pages, f)

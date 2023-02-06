@@ -299,7 +299,14 @@ class User_data:
                 else:
                     money_spent_per_month[order["datetime"].month] = order["amount"]
 
-        # sort by date
+        # sort by key
+        money_spent_per_month = dict(
+            sorted(
+                money_spent_per_month.items(),
+                key=lambda item: item[0],
+                reverse=False,
+            )
+        )
 
         return money_spent_per_month
 
@@ -308,7 +315,7 @@ class User_data:
         # line and text should be white
         # background should be transparent
         money_spent_per_month = self.money_spent_per_month()
-        # print(money_spent_per_month)
+        print(money_spent_per_month)
 
         plt.clf()
         plt.figure(figsize=(10, 10), facecolor="#cb202d")
