@@ -80,7 +80,9 @@ def get_order_json(phone_number):
     all_pages = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         for page in range(1, page_count + 1):
+            print(f"Page {page} started")
             all_pages.append(executor.submit(get_page_json, page, req_session))
+            print(f"Page {page} done")
     all_pages = [page.result() for page in all_pages]
 
     with open(f"order_data/{phone_number}_orders.json", "w") as f:
